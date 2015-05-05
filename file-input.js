@@ -106,8 +106,8 @@
             validationTarget.setAttribute("tabindex", "-1");
             validationTarget.setAttribute("type", "text");
 
-            // Strange margin/padding needed to ensure some browsers 
-            // don't hide the validation message immediately after it 
+            // Strange margin/padding needed to ensure some browsers
+            // don't hide the validation message immediately after it
             // appears (Chrome at this time)
             validationTarget.style.padding = "1px";
             validationTarget.style.margin = "-1px";
@@ -116,7 +116,7 @@
             validationTarget.style.height = 0;
             validationTarget.style.opacity = 0;
             validationTarget.style.width = 0;
-            
+
             validationTarget.className = "fileInputDelegate";
 
             validationTarget.customElementRef = customEl;
@@ -230,6 +230,10 @@
 
             customEl.created();
             resetInput(customEl);
+        },
+
+        sendClickToInput: function() {
+          this.$.fileInput.click();
         }
     };
 }());

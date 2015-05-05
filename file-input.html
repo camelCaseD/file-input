@@ -14,13 +14,13 @@ A better `<input type="file">`.
 Now, a new, better, evolved (and evolving) element to take its place: `<file-input>`!
 
 ### And... `<file-input>` integrates perfectly with `<ajax-form>`!
-Simply include a `<file-input>` in [an `<ajax-form>`](https://github.com/garstasio/ajax-form), 
-ensure the `name` attribute is present on the `<file-input>`, and the `<ajax-form>` 
-includes an `enctype` attriute with a value of `multipart/form-data`.  Any valid 
-files will be sent along with the other form fields!  
+Simply include a `<file-input>` in [an `<ajax-form>`](https://github.com/garstasio/ajax-form),
+ensure the `name` attribute is present on the `<file-input>`, and the `<ajax-form>`
+includes an `enctype` attriute with a value of `multipart/form-data`.  Any valid
+files will be sent along with the other form fields!
 
-If you incoude a `required` attribute on the `<file-input>`, `<ajax-form>` will 
-even prevent the form from being submitted if there isn't at least one valid 
+If you incoude a `required` attribute on the `<file-input>`, `<ajax-form>` will
+even prevent the form from being submitted if there isn't at least one valid
 file selected!  Note that the validation of custom elements, such as `<file-input>`,
 will first be possible in [`<ajax-form>` 1.3.0](https://github.com/garstasio/ajax-form/issues/6).
 
@@ -33,7 +33,7 @@ that all of your HTML imports are concatenated into one file.__
 @homepage index.html
 -->
 
-<polymer-element name="file-input" attributes="accept camera directory extensions maxFiles maxSize minSize required">
+<polymer-element name="file-input" attributes="accept camera directory extensions maxFiles maxSize minSize required" on-click="{{sendClickToInput}}">
 
     <template>
 
@@ -69,13 +69,13 @@ that all of your HTML imports are concatenated into one file.__
 
     <script>
         /**
-        * When your user selects new files, a "change" event will be triggered 
-        * on the element.  The `detail` property on the `event` passed to your 
-        * handler will contain two properties: `valid` and `invalid`.  
-        * These correspond to the `files` and `invalid` (respectively) 
+        * When your user selects new files, a "change" event will be triggered
+        * on the element.  The `detail` property on the `event` passed to your
+        * handler will contain two properties: `valid` and `invalid`.
+        * These correspond to the `files` and `invalid` (respectively)
         * properties on the element instance.
         *
-        *     fileInputEl.addEventListener("change", 
+        *     fileInputEl.addEventListener("change",
         *         function(event) {
         *             var validFiles = event.detail.valid,
         *                 invalidFiles = event.detail.invalid;
@@ -83,54 +83,54 @@ that all of your HTML imports are concatenated into one file.__
         *             // handle the event
         *         }
         *     );
-        * 
+        *
         * @event change
         */
-        
+
         /**
         * To access an `Array` of `File` objects selected by your user that have also passed all validation checks, look to the `files` property.
-        * 
+        *
         *     var validFiles = fileInputElement.files;
-        * 
+        *
         * @property files
         * @type Array
         * @default []
         */
-        
+
         /**
-        * To access an `Object` containing keyed `Array`s of `File` objects, 
-        * representing any files selected by your user that did **not** 
-        * pass validation checks, inspect the `invalid` property.  
+        * To access an `Object` containing keyed `Array`s of `File` objects,
+        * representing any files selected by your user that did **not**
+        * pass validation checks, inspect the `invalid` property.
         *
-        * This is an object with a `count` property to easily determine how 
-        * many invalid files exist.  Invalid files are grouped by reason.  
-        * For example, if there are 4 invalid files, one of each type: 
+        * This is an object with a `count` property to easily determine how
+        * many invalid files exist.  Invalid files are grouped by reason.
+        * For example, if there are 4 invalid files, one of each type:
         * the value of the `invalid` property would look like this:
         *
         *     var invalidFiles = fileInputEl.invalid;
-        * 
+        *
         *     expect(invalidFiles).toEqual({
         *         count: 4,
-        * 
-        *         // array containing the 1 file 
+        *
+        *         // array containing the 1 file
         *         // with a bad extension
         *         badExtension: [],
-        * 
-        *         // array containing the 1 file with 
+        *
+        *         // array containing the 1 file with
         *         // a file size that was too large
-        *         tooBig: [], 
-        * 
-        *         // array containing the 1 file with 
+        *         tooBig: [],
+        *
+        *         // array containing the 1 file with
         *         // a file size that was too small
         *         tooSmall: [],
         *
-        *         // array containing any leftover 
-        *         // otherwise valid files that exceed 
-        *         // the number of allowable files 
+        *         // array containing any leftover
+        *         // otherwise valid files that exceed
+        *         // the number of allowable files
         *         tooMany: []
         *     });
         *
-        * 
+        *
         * @property invalid
         * @type Object
         * @default {count: 0}
@@ -141,26 +141,26 @@ that all of your HTML imports are concatenated into one file.__
          * underlying `<input type="file">`, use the `reset()` function:
          *
          *     document.querySelector("file-input").reset();
-         * 
+         *
          * @method reset
          */
 
         /**
-         * If you want to restrict the types of files that the file chooser 
-         * will allow your user's to select, you can make use of an `accept` 
-         * attribute, passing one or more MIME types as comma-separated values.  
-         * Please note that [browser support for this attribute is poor and implementations vary](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input#Browser_compatibility).  
-         * 
-         * For example, to only allow your users to select images and videos:  
+         * If you want to restrict the types of files that the file chooser
+         * will allow your user's to select, you can make use of an `accept`
+         * attribute, passing one or more MIME types as comma-separated values.
+         * Please note that [browser support for this attribute is poor and implementations vary](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input#Browser_compatibility).
+         *
+         * For example, to only allow your users to select images and videos:
          *
          *     <file-input accept="image/*,video/*">
          *         Select Files
          *     </file-input>
-         * 
+         *
          * @attribute accept
          * @type string
          */
-         
+
          /**
           * This is currently an iOS-specific attribute, as there are a few
           * attributes on the underlying `<input type="file">` element that must
@@ -168,7 +168,7 @@ that all of your HTML imports are concatenated into one file.__
           * `<file-input>` is smart enough to only apply these settings when
           * neceessary (only when the device is running iOS), so including this
           * property on other devices is essentially a NOP.
-          * 
+          *
           *     <file-input camera>
           *         Select Files
           *     </file-input>
@@ -177,70 +177,70 @@ that all of your HTML imports are concatenated into one file.__
           */
 
          /**
-          * Some browsers (currently only Chrome and Opera) allow you to 
-          * select folders for upload.  To turn on this feature (ignored 
-          * if not supported by the UA), just include this attribute 
+          * Some browsers (currently only Chrome and Opera) allow you to
+          * select folders for upload.  To turn on this feature (ignored
+          * if not supported by the UA), just include this attribute
           * on the element.
-          * 
+          *
           *     <file-input directory>
           *         Select Files
           *     </file-input>
           *
-          * Note: Using this feature may not be a great idea for 
-          * large directories (or high-latency file systems) since the UI thread 
-          * is blocked while the file tree is parsed.  This is an unfortunate 
+          * Note: Using this feature may not be a great idea for
+          * large directories (or high-latency file systems) since the UI thread
+          * is blocked while the file tree is parsed.  This is an unfortunate
           * native implementation detail in the browser.
           *
-          * 
+          *
           * @attribute directory
           */
-          
+
           /**
-           * Text that will appear next to the element if an `<ajax-form>` 
-           * submission is rejected due to an invalid `<file-input>`.  
-           * 
+           * Text that will appear next to the element if an `<ajax-form>`
+           * submission is rejected due to an invalid `<file-input>`.
+           *
            * @attribute invalidText
            * @type string
            * @default "No valid files selected."
            */
-           
+
           /**
            * This is a validation attribute that allows you to filter out any
-           * files that do not contain a specific extension.  The value of this 
-           * attribute is a JSON array string, containing all extensions to keep.  
-           * You can also negate your extension array by including a `!` sign 
+           * files that do not contain a specific extension.  The value of this
+           * attribute is a JSON array string, containing all extensions to keep.
+           * You can also negate your extension array by including a `!` sign
            * just before the array's opening bracket.
-           * 
+           *
            * For example, to only accept "jpeg" files:
-           * 
+           *
            *     <file-input extensions='["jpeg", "jpg"]'>
            *         Select Files
            *     </file-input>
-           * 
+           *
            * To allow any extension EXCEPT "jpeg" files:
-           * 
+           *
            *     <file-input extensions='!["jpeg", "jpg"]'>
            *         Select Files
            *     </file-input>
-           * 
+           *
            * @attribute extensions
            * @type Array
            */
-           
+
            /**
-            * If you'd like to limit the number of files to accept from your 
+            * If you'd like to limit the number of files to accept from your
             * users, specify this as an integer value for the `maxFiles` attribute.
-            * 
+            *
             * For example, to only accept 3 files:
-            * 
+            *
             *     <file-input maxFiles="3">
             *         Select Files
             *     </file-input>
-            * 
-            * If you'd like to completely prevent users from selecting more 
-            * than one file from the file chooser, you can simply set 
+            *
+            * If you'd like to completely prevent users from selecting more
+            * than one file from the file chooser, you can simply set
             * `maxFiles` to 1:
-            * 
+            *
             *     <file-input maxFiles="1">
             *         Select Files
             *     </file-input>
@@ -249,29 +249,29 @@ that all of your HTML imports are concatenated into one file.__
             * @type integer
             * @default 0
             */
-            
+
             /**
-             * You can also specify maximum and minimum acceptable file sizes 
-             * for the purposes of validation.  The values of each attribute 
+             * You can also specify maximum and minimum acceptable file sizes
+             * for the purposes of validation.  The values of each attribute
              * are expected to be in bytes.
-             * 
-             * For example, to only allow files that are 1000 bytes or greater 
+             *
+             * For example, to only allow files that are 1000 bytes or greater
              * but not greater than 3000 bytes:
-             * 
+             *
              *     <file-input minSize="1000" maxSize="3000">
              *         Select Files
              *     </file-input>
-             * 
+             *
              * @attribute maxSize & minSize
              * @type integer
              * @default 0
              */
-             
+
             /**
             * Include this attribute if this element is embedded in an `<ajax-form>`
             * and you want to prevent submission unless at least one valid file
             * has been selected.
-            * 
+            *
             *     <file-input required>
             *         Select Files
             *     </file-input>
@@ -280,7 +280,7 @@ that all of your HTML imports are concatenated into one file.__
             */
 
         Polymer('file-input', fileInput);
-        
+
     </script>
-    
+
 </polymer-element>
