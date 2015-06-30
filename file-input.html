@@ -1,5 +1,6 @@
-<link rel="import" href="../polymer/polymer.html">
-<script src="file-input.js"></script>
+<link rel="import" href="/bower_components/webcomponentsjs/webcomponents-lite.js">
+<link rel="import" href="/bower_components/polymer/polymer.html">
+
 
 <!--
 A better `<input type="file">`.
@@ -29,258 +30,550 @@ your main/parent HTML file before deploying into production.  This will ensure
 that all of your HTML imports are concatenated into one file.__
 
 @element file-input
-@status beta
-@homepage index.html
+@demo demo.html
 -->
 
-<polymer-element name="file-input" attributes="accept camera directory extensions maxFiles maxSize minSize required" on-click="{{sendClickToInput}}">
+<dom-module id="file-input" on-click="_sendClickToInput">
+    <style>
+        :host {
+            position: relative;
+        }
+
+        #fileInput {
+            bottom: 0;
+            height: 100%;
+            left: 0;
+            margin: 0;
+            opacity: 0;
+            padding: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 100%;
+        }
+    </style>
 
     <template>
-
-        <style>
-            :host {
-                position: relative;
-            }
-
-            #fileInput {
-                bottom: 0;
-                height: 100%;
-                left: 0;
-                margin: 0;
-                opacity: 0;
-                padding: 0;
-                position: absolute;
-                right: 0;
-                top: 0;
-                width: 100%;
-            }
-        </style>
-
         <content></content>
 
         <input
             accept="{{accept}}"
             id="fileInput"
-            on-change="{{changeHandler}}"
+            on-change="_changeHandler"
             type="file"
         >
 
     </template>
 
     <script>
-        /**
-        * When your user selects new files, a "change" event will be triggered
-        * on the element.  The `detail` property on the `event` passed to your
-        * handler will contain two properties: `valid` and `invalid`.
-        * These correspond to the `files` and `invalid` (respectively)
-        * properties on the element instance.
-        *
-        *     fileInputEl.addEventListener("change",
-        *         function(event) {
-        *             var validFiles = event.detail.valid,
-        *                 invalidFiles = event.detail.invalid;
-        *
-        *             // handle the event
-        *         }
-        *     );
-        *
-        * @event change
-        */
+      var arrayOf = function(pseudoArray) {
+            return Array.prototype.slice.call(pseudoArray);
+        },
 
-        /**
-        * To access an `Array` of `File` objects selected by your user that have also passed all validation checks, look to the `files` property.
-        *
-        *     var validFiles = fileInputElement.files;
-        *
-        * @property files
-        * @type Array
-        * @default []
-        */
+        getLowerCaseExtension = function(filename) {
+            var extIdx = filename.lastIndexOf(".") + 1;
 
-        /**
-        * To access an `Object` containing keyed `Array`s of `File` objects,
-        * representing any files selected by your user that did **not**
-        * pass validation checks, inspect the `invalid` property.
-        *
-        * This is an object with a `count` property to easily determine how
-        * many invalid files exist.  Invalid files are grouped by reason.
-        * For example, if there are 4 invalid files, one of each type:
-        * the value of the `invalid` property would look like this:
-        *
-        *     var invalidFiles = fileInputEl.invalid;
-        *
-        *     expect(invalidFiles).toEqual({
-        *         count: 4,
-        *
-        *         // array containing the 1 file
-        *         // with a bad extension
-        *         badExtension: [],
-        *
-        *         // array containing the 1 file with
-        *         // a file size that was too large
-        *         tooBig: [],
-        *
-        *         // array containing the 1 file with
-        *         // a file size that was too small
-        *         tooSmall: [],
-        *
-        *         // array containing any leftover
-        *         // otherwise valid files that exceed
-        *         // the number of allowable files
-        *         tooMany: []
-        *     });
-        *
-        *
-        * @property invalid
-        * @type Object
-        * @default {count: 0}
-        */
+            if (extIdx > 0) {
+                return filename.substr(extIdx, filename.length - extIdx).toLowerCase();
+            }
+        },
 
-        /**
-         * To reset the `files` and `invalid` cache and also reset the
-         * underlying `<input type="file">`, use the `reset()` function:
-         *
-         *     document.querySelector("file-input").reset();
-         *
-         * @method reset
-         */
+        getResultOfCountLimitValidation = function(limit, files) {
+            if (limit > 0 && limit < files.length) {
+                return {
+                    invalid: files.slice(limit, files.length),
+                    valid: files.slice(0, limit)
+                };
+            }
 
-        /**
-         * If you want to restrict the types of files that the file chooser
-         * will allow your user's to select, you can make use of an `accept`
-         * attribute, passing one or more MIME types as comma-separated values.
-         * Please note that [browser support for this attribute is poor and implementations vary](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input#Browser_compatibility).
-         *
-         * For example, to only allow your users to select images and videos:
-         *
-         *     <file-input accept="image/*,video/*">
-         *         Select Files
-         *     </file-input>
-         *
-         * @attribute accept
-         * @type string
-         */
+            return {invalid: [], valid: files};
+        },
 
-         /**
-          * This is currently an iOS-specific attribute, as there are a few
-          * attributes on the underlying `<input type="file">` element that must
-          * be setup in order to allow camera access on Apple mobile devices.
-          * `<file-input>` is smart enough to only apply these settings when
-          * neceessary (only when the device is running iOS), so including this
-          * property on other devices is essentially a NOP.
-          *
-          *     <file-input camera>
-          *         Select Files
-          *     </file-input>
-          *
-          * @attribute camera
-          */
+        getResultOfExtensionsValidation = function(extensionsStr, files) {
+            if (extensionsStr) {
+                var negate = extensionsStr.charAt(0) === "!",
+                    extensions = JSON.parse(extensionsStr.toLowerCase().substr(negate ? 1 : 0)),
+                    result = {invalid: [], valid: []};
 
-         /**
-          * Some browsers (currently only Chrome and Opera) allow you to
-          * select folders for upload.  To turn on this feature (ignored
-          * if not supported by the UA), just include this attribute
-          * on the element.
-          *
-          *     <file-input directory>
-          *         Select Files
-          *     </file-input>
-          *
-          * Note: Using this feature may not be a great idea for
-          * large directories (or high-latency file systems) since the UI thread
-          * is blocked while the file tree is parsed.  This is an unfortunate
-          * native implementation detail in the browser.
-          *
-          *
-          * @attribute directory
-          */
+                files.forEach(function(file) {
+                    var extension = getLowerCaseExtension(file.name);
 
-          /**
-           * Text that will appear next to the element if an `<ajax-form>`
-           * submission is rejected due to an invalid `<file-input>`.
-           *
-           * @attribute invalidText
-           * @type string
-           * @default "No valid files selected."
-           */
+                    if (extensions.indexOf(extension) >= 0) {
+                        result[negate ? "invalid" : "valid"].push(file);
+                    }
+                    else {
+                        result[negate? "valid" : "invalid"].push(file);
+                    }
+                });
 
-          /**
-           * This is a validation attribute that allows you to filter out any
-           * files that do not contain a specific extension.  The value of this
-           * attribute is a JSON array string, containing all extensions to keep.
-           * You can also negate your extension array by including a `!` sign
-           * just before the array's opening bracket.
-           *
-           * For example, to only accept "jpeg" files:
-           *
-           *     <file-input extensions='["jpeg", "jpg"]'>
-           *         Select Files
-           *     </file-input>
-           *
-           * To allow any extension EXCEPT "jpeg" files:
-           *
-           *     <file-input extensions='!["jpeg", "jpg"]'>
-           *         Select Files
-           *     </file-input>
-           *
-           * @attribute extensions
-           * @type Array
-           */
+                return result;
+            }
 
-           /**
-            * If you'd like to limit the number of files to accept from your
-            * users, specify this as an integer value for the `maxFiles` attribute.
-            *
-            * For example, to only accept 3 files:
-            *
-            *     <file-input maxFiles="3">
-            *         Select Files
-            *     </file-input>
-            *
-            * If you'd like to completely prevent users from selecting more
-            * than one file from the file chooser, you can simply set
-            * `maxFiles` to 1:
-            *
-            *     <file-input maxFiles="1">
-            *         Select Files
-            *     </file-input>
-            *
-            * @attribute maxFiles
-            * @type integer
-            * @default 0
-            */
+            return {invalid: [], valid: files};
+        },
 
-            /**
-             * You can also specify maximum and minimum acceptable file sizes
-             * for the purposes of validation.  The values of each attribute
-             * are expected to be in bytes.
+        getResultOfSizeValidation = function(minSize, maxSize, files) {
+            if (!minSize && !maxSize) {
+                return {tooBig: [], tooSmall: [], valid: files};
+            }
+
+            var valid = [],
+                tooBig = [],
+                tooSmall = [];
+
+            files.forEach(function(file) {
+                if (minSize && file.size < minSize) {
+                    tooSmall.push(file);
+                }
+                else if (maxSize && file.size > maxSize) {
+                    tooBig.push(file);
+                }
+                else {
+                    valid.push(file);
+                }
+            });
+
+            return {tooBig: tooBig, tooSmall: tooSmall, valid: valid};
+        },
+
+        isIos = function() {
+            return navigator.userAgent.indexOf("iPad") !== -1 ||
+                navigator.userAgent.indexOf("iPod") !== -1 ||
+                navigator.userAgent.indexOf("iPhone") !== -1;
+        },
+
+        // This is the only way (I am aware of) to reset an `<input type="file">`
+        // without removing it from the DOM.  Removing it disconnects it
+        // from the CE/Polymer.
+        resetInput = function(customEl) {
+            // create a form with a hidden reset button
+            var tempForm = document.createElement("form"),
+                tempResetButton = document.createElement("button");
+
+            tempResetButton.setAttribute("type", "reset");
+            tempResetButton.style.display = "none";
+            tempForm.appendChild(tempResetButton);
+
+            // temporarily move the `<input type="file">` into the form & add form to DOM
+            customEl.$.fileInput.parentNode.insertBefore(tempForm, customEl.$.fileInput);
+            tempForm.appendChild(customEl.$.fileInput);
+
+            // reset the `<input type="file">`
+            tempResetButton.click();
+
+            // move the `<input type="file">` back to its original spot & remove form
+            tempForm.parentNode.appendChild(customEl.$.fileInput);
+            tempForm.parentNode.removeChild(tempForm);
+
+            updateValidity(customEl);
+        },
+
+        setupValidationTarget = function(customEl) {
+            validationTarget = document.createElement("input");
+            validationTarget.setAttribute("tabindex", "-1");
+            validationTarget.setAttribute("type", "text");
+
+            // Strange margin/padding needed to ensure some browsers
+            // don't hide the validation message immediately after it
+            // appears (Chrome at this time)
+            validationTarget.style.padding = "1px";
+            validationTarget.style.margin = "-1px";
+
+            validationTarget.style.border = 0;
+            validationTarget.style.height = 0;
+            validationTarget.style.opacity = 0;
+            validationTarget.style.width = 0;
+
+            validationTarget.className = "fileInputDelegate";
+
+            validationTarget.customElementRef = customEl;
+
+            customEl.parentNode.insertBefore(validationTarget, customEl);
+
+            updateValidity(customEl);
+        },
+
+        updateValidity = function(customEl) {
+            if (validationTarget) {
+                if (customEl.files.length) {
+                    validationTarget.setCustomValidity("");
+                }
+                else {
+                    validationTarget.setCustomValidity(customEl.invalidtext);
+                }
+            }
+        },
+
+        validationTarget;
+
+        Polymer({
+           is: 'file-input',
+
+           properties: {
+               /**
+               * To access an `Array` of `File` objects selected by your user that have also passed all validation checks, look to the `files` property.
+               *
+               *     var validFiles = fileInputElement.files;
+               *
+               * @property files
+               * @type Array
+               */
+
+               files: {
+                 type: Array,
+                 value: []
+               },
+
+               /**
+               * To access an `Object` containing keyed `Array`s of `File` objects,
+               * representing any files selected by your user that did **not**
+               * pass validation checks, inspect the `invalid` property.
+               *
+               * This is an object with a `count` property to easily determine how
+               * many invalid files exist.  Invalid files are grouped by reason.
+               * For example, if there are 4 invalid files, one of each type:
+               * the value of the `invalid` property would look like this:
+               *
+               *     var invalidFiles = fileInputEl.invalid;
+               *
+               *     expect(invalidFiles).toEqual({
+               *         count: 4,
+               *
+               *         // array containing the 1 file
+               *         // with a bad extension
+               *         badExtension: [],
+               *
+               *         // array containing the 1 file with
+               *         // a file size that was too large
+               *         tooBig: [],
+               *
+               *         // array containing the 1 file with
+               *         // a file size that was too small
+               *         tooSmall: [],
+               *
+               *         // array containing any leftover
+               *         // otherwise valid files that exceed
+               *         // the number of allowable files
+               *         tooMany: []
+               *     });
+               *
+               *
+               * @property invalid
+               * @type Object
+               */
+
+               invalid: {
+                 type: Object,
+                 value: {count: 0}
+               },
+
+               /**
+                * If you want to restrict the types of files that the file chooser
+                * will allow your user's to select, you can make use of an `accept`
+                * attribute, passing one or more MIME types as comma-separated values.
+                * Please note that [browser support for this attribute is poor and implementations vary](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input#Browser_compatibility).
+                *
+                * For example, to only allow your users to select images and videos:
+                *
+                *     <file-input accept="image/*,video/*">
+                *         Select Files
+                *     </file-input>
+                *
+                * @attribute accept
+                * @type string
+                */
+
+               accept: {
+                 type: String
+               },
+
+               /**
+                * This is currently an iOS-specific attribute, as there are a few
+                * attributes on the underlying `<input type="file">` element that must
+                * be setup in order to allow camera access on Apple mobile devices.
+                * `<file-input>` is smart enough to only apply these settings when
+                * neceessary (only when the device is running iOS), so including this
+                * property on other devices is essentially a NOP.
+                *
+                *     <file-input camera>
+                *         Select Files
+                *     </file-input>
+                *
+                * @attribute camera
+                */
+
+               camera: {
+                 type: Boolean,
+                 value: false
+               },
+
+               /**
+                * Some browsers (currently only Chrome and Opera) allow you to
+                * select folders for upload.  To turn on this feature (ignored
+                * if not supported by the UA), just include this attribute
+                * on the element.
+                *
+                *     <file-input directory>
+                *         Select Files
+                *     </file-input>
+                *
+                * Note: Using this feature may not be a great idea for
+                * large directories (or high-latency file systems) since the UI thread
+                * is blocked while the file tree is parsed.  This is an unfortunate
+                * native implementation detail in the browser.
+                *
+                *
+                * @attribute directory
+                */
+
+               directory: {
+                 type: Boolean,
+                 value: false
+               },
+
+               /**
+                * Text that will appear next to the element if an `<ajax-form>`
+                * submission is rejected due to an invalid `<file-input>`.
+                *
+                * @attribute invalidText
+                * @type string
+                */
+
+               invalidtext: {
+                 type: String,
+                 value: 'No valid files selected.'
+               },
+
+               /**
+                * This is a validation attribute that allows you to filter out any
+                * files that do not contain a specific extension.  The value of this
+                * attribute is a JSON array string, containing all extensions to keep.
+                * You can also negate your extension array by including a `!` sign
+                * just before the array's opening bracket.
+                *
+                * For example, to only accept "jpeg" files:
+                *
+                *     <file-input extensions='["jpeg", "jpg"]'>
+                *         Select Files
+                *     </file-input>
+                *
+                * To allow any extension EXCEPT "jpeg" files:
+                *
+                *     <file-input extensions='!["jpeg", "jpg"]'>
+                *         Select Files
+                *     </file-input>
+                *
+                * @attribute extensions
+                * @type Array
+                */
+
+               extensions: {
+                 type: Array
+               },
+
+               /**
+                * If you'd like to limit the number of files to accept from your
+                * users, specify this as an integer value for the `maxFiles` attribute.
+                *
+                * For example, to only accept 3 files:
+                *
+                *     <file-input maxFiles="3">
+                *         Select Files
+                *     </file-input>
+                *
+                * If you'd like to completely prevent users from selecting more
+                * than one file from the file chooser, you can simply set
+                * `maxFiles` to 1:
+                *
+                *     <file-input maxFiles="1">
+                *         Select Files
+                *     </file-input>
+                *
+                * @attribute maxFiles
+                * @type integer
+                */
+
+               maxfiles: {
+                 type: Number,
+                 value: 0
+               },
+
+               /**
+                * You can also specify maximum acceptable file sizes
+                * for the purposes of validation.  The values of the attribute
+                * are expected to be in bytes.
+                *
+                * For example, to only allow files that are not greater than 3000 bytes:
+                *
+                *     <file-input maxSize="3000">
+                *         Select Files
+                *     </file-input>
+                *
+                * @attribute maxSize
+                * @type integer
+                */
+
+               maxsize: {
+                 type: Number,
+                 value: 0
+               },
+
+               /**
+                * You can also specify minimum acceptable file sizes
+                * for the purposes of validation.  The values of the attribute
+                * are expected to be in bytes.
+                *
+                * For example, to only allow files that are 1000 bytes or greater:
+                *
+                *     <file-input minSize="1000">
+                *         Select Files
+                *     </file-input>
+                *
+                * @attribute minSize
+                * @type integer
+                */
+
+               minsize: {
+                 type: Number,
+                 value: 0
+               },
+
+               /**
+               * Include this attribute if this element is embedded in an `<ajax-form>`
+               * and you want to prevent submission unless at least one valid file
+               * has been selected.
+               *
+               *     <file-input required>
+               *         Select Files
+               *     </file-input>
+               *
+               * @attribute required
+               */
+
+               required: {
+                 type: Boolean,
+                 value: false
+               }
+             },
+
+             created: function() {
+                 var customEl = this;
+
+                 customEl.files = [];
+                 customEl.invalid = {count: 0};
+             },
+
+             attached: function() {
+                 this.async(function() {
+                   var customEl = this;
+
+                   if (customEl.camera != null && isIos()) {
+                       customEl.maxfiles = 1;
+
+                       var iosCameraAccept = "image/*;capture=camera";
+                       if (customEl.accept && customEl.accept.length.trim().length > 0) {
+                           customEl.accept += "," + iosCameraAccept;
+                       }
+                       else {
+                           customEl.accept = iosCameraAccept;
+                       }
+                   }
+
+                   if (customEl.maxfiles !== 1) {
+                       customEl.$.fileInput.setAttribute("multiple", "");
+                   }
+
+                   if (customEl.directory && customEl.$.fileInput.webkitdirectory !== undefined) {
+                       customEl.$.fileInput.setAttribute("webkitdirectory", "");
+                   }
+
+                   if (customEl.required) {
+                       setupValidationTarget(customEl);
+                   }
+                 });
+             },
+
+             /**
+              * To reset the `files` and `invalid` cache and also reset the
+              * underlying `<input type="file">`, use the `reset()` function:
+              *
+              *     document.querySelector("file-input").reset();
+              *
+              * @method reset
+              */
+
+             reset: function() {
+                 var customEl = this;
+
+                 customEl.created();
+                 resetInput(customEl);
+             },
+
+             /**
+             * When your user selects new files, a "change" event will be triggered
+             * on the element.  The `detail` property on the `event` passed to your
+             * handler will contain two properties: `valid` and `invalid`.
+             * These correspond to the `files` and `invalid` (respectively)
+             * properties on the element instance.
              *
-             * For example, to only allow files that are 1000 bytes or greater
-             * but not greater than 3000 bytes:
+             *     fileInputEl.addEventListener("change",
+             *         function(event) {
+             *             var validFiles = event.detail.valid,
+             *                 invalidFiles = event.detail.invalid;
              *
-             *     <file-input minSize="1000" maxSize="3000">
-             *         Select Files
-             *     </file-input>
+             *             // handle the event
+             *         }
+             *     );
              *
-             * @attribute maxSize & minSize
-             * @type integer
-             * @default 0
+             * @event change
              */
 
-            /**
-            * Include this attribute if this element is embedded in an `<ajax-form>`
-            * and you want to prevent submission unless at least one valid file
-            * has been selected.
-            *
-            *     <file-input required>
-            *         Select Files
-            *     </file-input>
-            *
-            * @attribute required
-            */
+             _changeHandler: function() {
+                 var customEl = this,
+                     files = arrayOf(customEl.$.fileInput.files),
+                     invalid = {count: 0},
+                     valid = [];
 
-        Polymer('file-input', fileInput);
+                 // Some browsers may fire a change event when the file chooser
+                 // dialog is closed via cancel button.  In this case, the
+                 //files array will be empty and the event should be ignored.
+                 if (files.length) {
+                     var sizeValidationResult = getResultOfSizeValidation(customEl.minsize, customEl.maxsize, files);
+                     var extensionValidationResult = getResultOfExtensionsValidation(JSON.stringify(customEl.extensions), sizeValidationResult.valid);
+                     var countLimitValidationResult = getResultOfCountLimitValidation(customEl.maxfiles, extensionValidationResult.valid);
+
+                     if (sizeValidationResult.tooBig.length) {
+                         invalid.tooBig = sizeValidationResult.tooBig;
+                         invalid.count += sizeValidationResult.tooBig.length;
+                     }
+                     if (sizeValidationResult.tooSmall.length) {
+                         invalid.tooSmall = sizeValidationResult.tooSmall;
+                         invalid.count += sizeValidationResult.tooSmall.length;
+                     }
+                     if (extensionValidationResult.invalid.length) {
+                         invalid.badExtension = extensionValidationResult.invalid;
+                         invalid.count += extensionValidationResult.invalid.length;
+                     }
+                     if (countLimitValidationResult.invalid.length) {
+                         invalid.tooMany = countLimitValidationResult.invalid;
+                         invalid.count += countLimitValidationResult.invalid.length;
+                     }
+
+                     valid = countLimitValidationResult.valid;
+
+                     customEl.invalid = invalid;
+                     customEl.files = valid;
+
+                     updateValidity(customEl);
+                     customEl.fire("change", {invalid: invalid, valid: valid});
+                 }
+             },
+
+             _sendClickToInput: function() {
+               this.$.fileInput.click();
+             }
+         });
 
     </script>
 
-</polymer-element>
+</dom-module>

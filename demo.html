@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
     <title>file-input demo</title>
 
-    <script src="../webcomponentsjs/webcomponents.js"></script>
+    <script src="/bower_components/webcomponentsjs/webcomponents-lite.js"></script>
     <link rel="import" href="file-input.html">
 
     <!--Only used by the demo to add common bootstrap button styles to the file chooser-->
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-    
+
     <style>
         .pre {
-            white-space: pre; 
+            white-space: pre;
             unicode-bidi: embed;
         }
     </style>
@@ -54,7 +54,7 @@
             validFiles = [],
             invalidFilesEl = document.getElementById('invalidFiles'),
             invalidFiles = {};
-        
+
         if (valid.length) {
             validFiles = valid.map(function(file) {
                 return {
@@ -77,9 +77,9 @@
                         return {
                             name: file.name,
                             size: file.size
-                        };    
+                        };
                     });
-                }    
+                }
             });
             invalidFilesEl.className = 'pre'
             invalidFilesEl.innerHTML = JSON.stringify(invalidFiles, null, 3);
